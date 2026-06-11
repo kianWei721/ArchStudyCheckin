@@ -12,7 +12,7 @@
 | 主键策略 | BIGINT，由 MyBatis-Plus `IdType.ASSIGN_ID`（雪花算法）生成，不使用 AUTO_INCREMENT |
 | 时间字段 | 统一使用 DATETIME NOT NULL |
 | 逻辑删除 | 使用 `deleted` 字段（0=未删除，1=已删除） |
-| 公共字段 | 所有表包含 `create_time`、`update_time`、`deleted` |
+| 公共字段 | 所有表包含 `created_at`、`updated_at`、`deleted` |
 | 外键策略 | 所有外键仅做逻辑约束，不创建数据库物理外键 |
 
 ---
@@ -39,10 +39,12 @@ app_user (1) ──── (1) reminder_setting
 | id | BIGINT | PK, NOT NULL | 用户ID（雪花算法） |
 | username | VARCHAR(20) | NOT NULL, UNIQUE | 用户名 |
 | email | VARCHAR(100) | NOT NULL, UNIQUE | 邮箱 |
+| nickname | VARCHAR(64) | NOT NULL | 昵称 |
 | password | VARCHAR(100) | NOT NULL | 密码（BCrypt加密） |
 | avatar_url | VARCHAR(255) | NULL | 头像URL（预留） |
-| create_time | DATETIME | NOT NULL | 创建时间 |
-| update_time | DATETIME | NOT NULL | 更新时间 |
+| status | TINYINT | NOT NULL, DEFAULT 1 | 状态：1正常，0禁用 |
+| created_at | DATETIME | NOT NULL | 创建时间 |
+| updated_at | DATETIME | NOT NULL | 更新时间 |
 | deleted | TINYINT(1) | NOT NULL, DEFAULT 0 | 逻辑删除 |
 
 **索引：**
@@ -69,8 +71,8 @@ app_user (1) ──── (1) reminder_setting
 | weekly_target_days | INT | NULL | 每周目标学习天数（1-7） |
 | stage | VARCHAR(20) | NULL | 当前备考阶段（如"基础阶段"） |
 | status | TINYINT | NOT NULL, DEFAULT 0 | 状态：0=进行中，1=已完成，2=已放弃 |
-| create_time | DATETIME | NOT NULL | 创建时间 |
-| update_time | DATETIME | NOT NULL | 更新时间 |
+| created_at | DATETIME | NOT NULL | 创建时间 |
+| updated_at | DATETIME | NOT NULL | 更新时间 |
 | deleted | TINYINT(1) | NOT NULL, DEFAULT 0 | 逻辑删除 |
 
 **索引：**
@@ -89,8 +91,8 @@ app_user (1) ──── (1) reminder_setting
 | checkin_date | DATE | NOT NULL | 打卡日期（用户本地时区） |
 | duration | INT | NOT NULL | 学习时长（分钟） |
 | content | VARCHAR(200) | NULL | 学习内容摘要 |
-| create_time | DATETIME | NOT NULL | 创建时间 |
-| update_time | DATETIME | NOT NULL | 更新时间 |
+| created_at | DATETIME | NOT NULL | 创建时间 |
+| updated_at | DATETIME | NOT NULL | 更新时间 |
 | deleted | TINYINT(1) | NOT NULL, DEFAULT 0 | 逻辑删除 |
 
 **索引：**
@@ -101,7 +103,7 @@ app_user (1) ──── (1) reminder_setting
 **幂等与逻辑删除说明：**
 - 唯一索引 `uk_user_plan_date` 保证同一用户同一天同一计划只有一条记录。
 - 第一版不提供打卡删除功能（物理删除或逻辑删除），`deleted` 字段保留但始终为 0。
-- 重复提交打卡时，业务层先根据唯一键查询已有记录，若存在则 UPDATE（duration、content、update_time），不新增记录。
+- 重复提交打卡时，业务层先根据唯一键查询已有记录，若存在则 UPDATE（duration、content、updated_at），不新增记录。
 - 由于第一版 deleted 始终为 0，唯一索引与逻辑删除无冲突。若后续需支持删除，可改用联合唯一索引包含 deleted 字段，或物理删除方案。
 
 ---
@@ -116,8 +118,8 @@ app_user (1) ──── (1) reminder_setting
 | invite_code | VARCHAR(6) | NOT NULL, UNIQUE | 邀请码（6位大写字母+数字） |
 | owner_id | BIGINT | NOT NULL | 组长用户ID（逻辑外键 → app_user.id） |
 | member_count | INT | NOT NULL, DEFAULT 1 | 当前成员数 |
-| create_time | DATETIME | NOT NULL | 创建时间 |
-| update_time | DATETIME | NOT NULL | 更新时间 |
+| created_at | DATETIME | NOT NULL | 创建时间 |
+| updated_at | DATETIME | NOT NULL | 更新时间 |
 | deleted | TINYINT(1) | NOT NULL, DEFAULT 0 | 逻辑删除 |
 
 **索引：**
@@ -135,8 +137,8 @@ app_user (1) ──── (1) reminder_setting
 | user_id | BIGINT | NOT NULL | 用户ID（逻辑外键 → app_user.id） |
 | role | TINYINT | NOT NULL, DEFAULT 0 | 角色：0=普通成员，1=组长 |
 | join_time | DATETIME | NOT NULL | 加入时间 |
-| create_time | DATETIME | NOT NULL | 创建时间 |
-| update_time | DATETIME | NOT NULL | 更新时间 |
+| created_at | DATETIME | NOT NULL | 创建时间 |
+| updated_at | DATETIME | NOT NULL | 更新时间 |
 | deleted | TINYINT(1) | NOT NULL, DEFAULT 0 | 逻辑删除 |
 
 **索引：**
@@ -159,8 +161,8 @@ app_user (1) ──── (1) reminder_setting
 | remind_time | TIME | NOT NULL, DEFAULT '20:00:00' | 提醒时间（HH:mm:ss） |
 | enabled | TINYINT(1) | NOT NULL, DEFAULT 1 | 是否启用（0=关闭，1=启用） |
 | repeat_type | TINYINT | NOT NULL, DEFAULT 0 | 重复类型：0=每天，1=工作日，2=自定义 |
-| create_time | DATETIME | NOT NULL | 创建时间 |
-| update_time | DATETIME | NOT NULL | 更新时间 |
+| created_at | DATETIME | NOT NULL | 创建时间 |
+| updated_at | DATETIME | NOT NULL | 更新时间 |
 | deleted | TINYINT(1) | NOT NULL, DEFAULT 0 | 逻辑删除 |
 
 **索引：**
@@ -187,10 +189,12 @@ CREATE TABLE `app_user` (
   `id` BIGINT NOT NULL COMMENT '用户ID(雪花算法)',
   `username` VARCHAR(20) NOT NULL COMMENT '用户名',
   `email` VARCHAR(100) NOT NULL COMMENT '邮箱',
+  `nickname` VARCHAR(64) NOT NULL COMMENT '昵称',
   `password` VARCHAR(100) NOT NULL COMMENT '密码(BCrypt)',
   `avatar_url` VARCHAR(255) DEFAULT NULL COMMENT '头像URL(预留)',
-  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态:1正常,0禁用',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=否,1=是)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_email` (`email`),
@@ -209,8 +213,8 @@ CREATE TABLE `study_plan` (
   `weekly_target_days` INT DEFAULT NULL COMMENT '每周目标学习天数(1-7)',
   `stage` VARCHAR(20) DEFAULT NULL COMMENT '当前备考阶段',
   `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态(0=进行中,1=已完成,2=已放弃)',
-  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=否,1=是)',
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`),
@@ -225,8 +229,8 @@ CREATE TABLE `checkin_record` (
   `checkin_date` DATE NOT NULL COMMENT '打卡日期(用户本地时区)',
   `duration` INT NOT NULL COMMENT '学习时长(分钟)',
   `content` VARCHAR(200) DEFAULT NULL COMMENT '学习内容摘要',
-  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=否,1=是)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_user_plan_date` (`user_id`, `plan_id`, `checkin_date`),
@@ -242,8 +246,8 @@ CREATE TABLE `study_group` (
   `invite_code` VARCHAR(6) NOT NULL COMMENT '邀请码(6位大写字母+数字)',
   `owner_id` BIGINT NOT NULL COMMENT '组长用户ID',
   `member_count` INT NOT NULL DEFAULT 1 COMMENT '成员数',
-  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=否,1=是)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_invite_code` (`invite_code`),
@@ -257,8 +261,8 @@ CREATE TABLE `study_group_member` (
   `user_id` BIGINT NOT NULL COMMENT '用户ID',
   `role` TINYINT NOT NULL DEFAULT 0 COMMENT '角色(0=成员,1=组长)',
   `join_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
-  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=否,1=是)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
@@ -273,8 +277,8 @@ CREATE TABLE `reminder_setting` (
   `remind_time` TIME NOT NULL DEFAULT '20:00:00' COMMENT '提醒时间',
   `enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用(0=关闭,1=启用)',
   `repeat_type` TINYINT NOT NULL DEFAULT 0 COMMENT '重复类型(0=每天,1=工作日,2=自定义)',
-  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=否,1=是)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_user_id` (`user_id`)
@@ -363,8 +367,8 @@ mybatis-plus:
 | join_time | joinTime | |
 | remind_time | remindTime | |
 | repeat_type | repeatType | |
-| create_time | createTime | |
-| update_time | updateTime | |
+| created_at | createTime | |
+| updated_at | updateTime | |
 
 MyBatis-Plus 全局配置 `map-underscore-to-camel-case: true` 即可自动完成映射。
 
