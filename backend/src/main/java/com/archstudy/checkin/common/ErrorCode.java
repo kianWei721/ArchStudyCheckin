@@ -15,7 +15,9 @@ public enum ErrorCode {
 
     // Auth related
     USER_ALREADY_EXISTS(1001, "用户名已存在"),
-    INVALID_CREDENTIALS(1002, "用户名或密码错误");
+    EMAIL_ALREADY_EXISTS(1002, "邮箱已被注册"),
+    INVALID_CREDENTIALS(1003, "用户名或密码错误"),
+    USER_DISABLED(1004, "账号已被禁用");
 
     private final int code;
     private final String message;

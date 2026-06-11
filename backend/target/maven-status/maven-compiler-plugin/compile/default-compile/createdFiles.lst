@@ -1,7 +1,7 @@
 com/archstudy/checkin/auth/mapper/AppUserMapper.class
 com/archstudy/checkin/security/JwtAuthenticationFilter.class
-com/archstudy/checkin/security/SecurityConfig.class
 com/archstudy/checkin/common/Result.class
+com/archstudy/checkin/security/SecurityConfig.class
 com/archstudy/checkin/auth/controller/AuthController.class
 com/archstudy/checkin/auth/dto/CurrentUserResponse.class
 com/archstudy/checkin/common/BusinessException.class
@@ -13,8 +13,8 @@ com/archstudy/checkin/common/GlobalExceptionHandler.class
 com/archstudy/checkin/auth/service/AuthService.class
 com/archstudy/checkin/security/LoginUser.class
 com/archstudy/checkin/auth/entity/AppUser.class
-com/archstudy/checkin/auth/dto/RegisterRequest.class
 com/archstudy/checkin/auth/dto/LoginResponse.class
+com/archstudy/checkin/auth/dto/RegisterRequest.class
 com/archstudy/checkin/common/GlobalExceptionHandler$1.class
 com/archstudy/checkin/security/JwtTokenProvider.class
 com/archstudy/checkin/security/SecurityContext.class

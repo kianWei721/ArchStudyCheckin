@@ -19,13 +19,17 @@ public class AppUser {
 
     private String email;
 
+    private String nickname;
+
     private String password;
 
     private String avatarUrl;
 
-    private LocalDateTime createTime;
+    private Integer status;
 
-    private LocalDateTime updateTime;
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 
     @TableLogic
     private Integer deleted;

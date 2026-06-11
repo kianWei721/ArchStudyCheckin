@@ -10,4 +10,5 @@ public class CurrentUserResponse {
     private Long userId;
     private String username;
     private String email;
+    private String nickname;
 }

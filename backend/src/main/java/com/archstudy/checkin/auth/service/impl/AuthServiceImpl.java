@@ -25,9 +25,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse register(RegisterRequest request) {
         // Check if username already exists
-        LambdaQueryWrapper<AppUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(AppUser::getUsername, request.getUsername());
-        if (appUserMapper.selectCount(queryWrapper) > 0) {
+        LambdaQueryWrapper<AppUser> usernameQuery = new LambdaQueryWrapper<>();
+        usernameQuery.eq(AppUser::getUsername, request.getUsername());
+        if (appUserMapper.selectCount(usernameQuery) > 0) {
             throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
         }
 
@@ -35,27 +35,29 @@ public class AuthServiceImpl implements AuthService {
         LambdaQueryWrapper<AppUser> emailQuery = new LambdaQueryWrapper<>();
         emailQuery.eq(AppUser::getEmail, request.getEmail());
         if (appUserMapper.selectCount(emailQuery) > 0) {
-            throw new BusinessException(ErrorCode.CONFLICT, "邮箱已被注册");
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         // Create user
         AppUser user = new AppUser();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
+        user.setNickname(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setCreateTime(LocalDateTime.now());
-        user.setUpdateTime(LocalDateTime.now());
+        user.setStatus(1);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
         user.setDeleted(0);
         appUserMapper.insert(user);
 
         // Generate token
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
-        return new LoginResponse(token, user.getId(), user.getUsername());
+        return new LoginResponse(token, user.getId(), user.getUsername(), user.getNickname());
     }
 
     @Override
     public LoginResponse login(LoginRequest request) {
-        // Find user
+        // Find user (including status check)
         LambdaQueryWrapper<AppUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(AppUser::getUsername, request.getUsername());
         AppUser user = appUserMapper.selectOne(queryWrapper);
@@ -64,9 +66,14 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
+        // Check if user is disabled
+        if (user.getStatus() == null || user.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.USER_DISABLED);
+        }
+
         // Generate token
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
-        return new LoginResponse(token, user.getId(), user.getUsername());
+        return new LoginResponse(token, user.getId(), user.getUsername(), user.getNickname());
     }
 
     @Override
@@ -75,6 +82,6 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
         }
-        return new CurrentUserResponse(user.getId(), user.getUsername(), user.getEmail());
+        return new CurrentUserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getNickname());
     }
 }
