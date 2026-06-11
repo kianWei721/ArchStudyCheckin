@@ -65,6 +65,9 @@ app_user (1) ──── (1) reminder_setting
 | subject | VARCHAR(50) | NOT NULL | 科目（如"系统架构设计"） |
 | target_days | INT | NOT NULL | 目标天数 |
 | start_date | DATE | NOT NULL | 开始日期 |
+| daily_target_minutes | INT | NULL | 每日目标学习分钟数 |
+| weekly_target_days | INT | NULL | 每周目标学习天数（1-7） |
+| stage | VARCHAR(20) | NULL | 当前备考阶段（如"基础阶段"） |
 | status | TINYINT | NOT NULL, DEFAULT 0 | 状态：0=进行中，1=已完成，2=已放弃 |
 | create_time | DATETIME | NOT NULL | 创建时间 |
 | update_time | DATETIME | NOT NULL | 更新时间 |
@@ -202,6 +205,9 @@ CREATE TABLE `study_plan` (
   `subject` VARCHAR(50) NOT NULL COMMENT '科目',
   `target_days` INT NOT NULL COMMENT '目标天数',
   `start_date` DATE NOT NULL COMMENT '开始日期',
+  `daily_target_minutes` INT DEFAULT NULL COMMENT '每日目标学习分钟数',
+  `weekly_target_days` INT DEFAULT NULL COMMENT '每周目标学习天数(1-7)',
+  `stage` VARCHAR(20) DEFAULT NULL COMMENT '当前备考阶段',
   `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态(0=进行中,1=已完成,2=已放弃)',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -347,6 +353,9 @@ mybatis-plus:
 | checkin_date | checkinDate | |
 | target_days | targetDays | |
 | start_date | startDate | |
+| daily_target_minutes | dailyTargetMinutes | |
+| weekly_target_days | weeklyTargetDays | |
+| stage | stage | 无需映射，名称相同 |
 | invite_code | inviteCode | |
 | owner_id | ownerId | |
 | member_count | memberCount | |

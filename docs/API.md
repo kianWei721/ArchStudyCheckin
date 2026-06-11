@@ -6,7 +6,7 @@
 
 | 项目 | 说明 |
 |------|------|
-| 基础路径 | `/api/v1` |
+| 基础路径 | `/api` |
 | 协议 | HTTPS（开发环境可 HTTP） |
 | 数据格式 | JSON |
 | 字符编码 | UTF-8 |
@@ -27,7 +27,7 @@
 |------|------|------|
 | code | Integer | 业务状态码，200=成功 |
 | message | String | 提示信息 |
-| data | Object/Array/null | 响应数据 |
+| data | Object/Array/null | 响应数据，无数据时为 null |
 
 ### 1.3 业务状态码
 
@@ -36,9 +36,9 @@
 | 200 | 成功 |
 | 400 | 参数校验失败 |
 | 401 | 未登录或 Token 过期 |
-| 403 | 无权限 |
+| 403 | 无权限（越权操作） |
 | 404 | 资源不存在 |
-| 409 | 资源冲突（如重复注册） |
+| 409 | 资源冲突（如重复注册、重复加入） |
 | 500 | 服务器内部错误 |
 
 ### 1.4 鉴权说明
@@ -46,7 +46,8 @@
 - 登录成功后返回 JWT Token。
 - 后续请求在 Header 中携带：`Authorization: ******
 - Token 有效期 7 天，过期返回 401。
-- userId 从 Token 中解析，前端不传 userId。
+- **userId 来源**：所有需鉴权接口的 userId 必须从 JWT Token 中解析获取。
+- **安全规则**：请求体、query 参数、path 参数中不允许传 userId 作为可信身份参数。后端绝不信任客户端传入的 userId。
 
 ### 1.5 分页参数（预留）
 
@@ -55,13 +56,19 @@
 | pageNum | Integer | 1 | 页码 |
 | pageSize | Integer | 20 | 每页数量（最大100） |
 
+### 1.6 空数据约定
+
+- 查询单个资源不存在时：返回 `code=404`。
+- 查询列表无数据时：`data` 返回空数组 `[]`。
+- 查询"当前计划"等可选资源无数据时：`data` 返回 `null`，`code=200`。
+
 ---
 
 ## 2. 认证模块
 
 ### 2.1 用户注册
 
-**POST** `/api/v1/auth/register`
+**POST** `/api/auth/register`
 
 **鉴权：** 无需
 
@@ -106,7 +113,7 @@
 
 ### 2.2 用户登录
 
-**POST** `/api/v1/auth/login`
+**POST** `/api/auth/login`
 
 **鉴权：** 无需
 
@@ -147,7 +154,7 @@
 
 ### 2.3 获取当前用户信息
 
-**GET** `/api/v1/auth/me`
+**GET** `/api/auth/me`
 
 **鉴权：** 需要
 
@@ -171,7 +178,7 @@
 
 ### 3.1 创建学习计划
 
-**POST** `/api/v1/plans`
+**POST** `/api/study-plans`
 
 **鉴权：** 需要
 
@@ -181,7 +188,10 @@
   "planName": "系统架构师备考",
   "subject": "系统架构设计",
   "targetDays": 90,
-  "startDate": "2026-06-15"
+  "startDate": "2026-06-15",
+  "dailyTargetMinutes": 120,
+  "weeklyTargetDays": 5,
+  "stage": "基础阶段"
 }
 ```
 
@@ -191,6 +201,9 @@
 | subject | String | 是 | 1-50字符 |
 | targetDays | Integer | 是 | 1-365 |
 | startDate | String | 是 | yyyy-MM-dd 格式 |
+| dailyTargetMinutes | Integer | 否 | 1-1440，每日目标学习分钟数 |
+| weeklyTargetDays | Integer | 否 | 1-7，每周目标学习天数 |
+| stage | String | 否 | 1-20字符，当前备考阶段 |
 
 **成功响应：**
 ```json
@@ -203,6 +216,9 @@
     "subject": "系统架构设计",
     "targetDays": 90,
     "startDate": "2026-06-15",
+    "dailyTargetMinutes": 120,
+    "weeklyTargetDays": 5,
+    "stage": "基础阶段",
     "status": 0
   }
 }
@@ -212,9 +228,70 @@
 
 ---
 
-### 3.2 查询我的学习计划列表
+### 3.2 修改学习计划
 
-**GET** `/api/v1/plans`
+**PUT** `/api/study-plans/{planId}`
+
+**鉴权：** 需要
+
+**权限校验：** 后端必须校验该 planId 属于当前登录用户（从 JWT 解析 userId），否则返回 403。
+
+**请求体：**
+```json
+{
+  "planName": "系统架构师备考（修订）",
+  "targetDays": 100,
+  "dailyTargetMinutes": 90,
+  "weeklyTargetDays": 6,
+  "stage": "强化阶段",
+  "status": 0
+}
+```
+
+| 字段 | 类型 | 必填 | 校验规则 |
+|------|------|------|----------|
+| planName | String | 否 | 1-50字符 |
+| targetDays | Integer | 否 | 1-365 |
+| dailyTargetMinutes | Integer | 否 | 1-1440 |
+| weeklyTargetDays | Integer | 否 | 1-7 |
+| stage | String | 否 | 1-20字符 |
+| status | Integer | 否 | 0=进行中，1=已完成，2=已放弃 |
+
+**说明：** 所有字段均为可选，只传需要修改的字段，未传字段保持不变。
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "message": "修改成功",
+  "data": {
+    "id": "1800000000000010",
+    "planName": "系统架构师备考（修订）",
+    "subject": "系统架构设计",
+    "targetDays": 100,
+    "startDate": "2026-06-15",
+    "dailyTargetMinutes": 90,
+    "weeklyTargetDays": 6,
+    "stage": "强化阶段",
+    "status": 0
+  }
+}
+```
+
+**错误场景：**
+| code | message |
+|------|---------|
+| 400 | 参数校验失败 |
+| 403 | 该计划不属于当前用户 |
+| 404 | 计划不存在 |
+
+**风险说明：** UPDATE study_plan，需校验归属后再更新。
+
+---
+
+### 3.3 查询我的学习计划列表
+
+**GET** `/api/study-plans`
 
 **鉴权：** 需要
 
@@ -235,6 +312,9 @@
       "subject": "系统架构设计",
       "targetDays": 90,
       "startDate": "2026-06-15",
+      "dailyTargetMinutes": 120,
+      "weeklyTargetDays": 5,
+      "stage": "基础阶段",
       "status": 0,
       "createTime": "2026-06-15T10:00:00"
     }
@@ -244,11 +324,13 @@
 
 ---
 
-### 3.3 查询学习计划详情
+### 3.4 查询学习计划详情
 
-**GET** `/api/v1/plans/{planId}`
+**GET** `/api/study-plans/{planId}`
 
 **鉴权：** 需要
+
+**权限校验：** 后端校验该计划属于当前用户。
 
 **成功响应：**
 ```json
@@ -261,6 +343,9 @@
     "subject": "系统架构设计",
     "targetDays": 90,
     "startDate": "2026-06-15",
+    "dailyTargetMinutes": 120,
+    "weeklyTargetDays": 5,
+    "stage": "基础阶段",
     "status": 0,
     "createTime": "2026-06-15T10:00:00"
   }
@@ -275,11 +360,53 @@
 
 ---
 
+### 3.5 获取当前默认学习计划
+
+**GET** `/api/study-plans/current`
+
+**鉴权：** 需要
+
+**说明：**
+- 用于首页和今日打卡页获取当前默认学习计划。
+- 返回用户状态为"进行中"(status=0) 的最新创建的计划。
+- 如果用户没有进行中的计划，`data` 返回 `null`，`code` 仍为 200。
+
+**成功响应（有计划）：**
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "1800000000000010",
+    "planName": "系统架构师备考",
+    "subject": "系统架构设计",
+    "targetDays": 90,
+    "startDate": "2026-06-15",
+    "dailyTargetMinutes": 120,
+    "weeklyTargetDays": 5,
+    "stage": "基础阶段",
+    "status": 0,
+    "createTime": "2026-06-15T10:00:00"
+  }
+}
+```
+
+**成功响应（无计划）：**
+```json
+{
+  "code": 200,
+  "message": "暂无进行中的学习计划",
+  "data": null
+}
+```
+
+---
+
 ## 4. 打卡模块
 
 ### 4.1 提交打卡（幂等）
 
-**POST** `/api/v1/checkins`
+**POST** `/api/checkins`
 
 **鉴权：** 需要
 
@@ -295,10 +422,22 @@
 
 | 字段 | 类型 | 必填 | 校验规则 |
 |------|------|------|----------|
-| planId | Long | 是 | 必须是当前用户的计划 |
-| checkinDate | String | 是 | yyyy-MM-dd 格式，用户本地日期 |
+| planId | Long | 是 | 必须是当前用户的计划（后端从 JWT 获取 userId 校验） |
+| checkinDate | String | 是 | yyyy-MM-dd 格式，由 iOS 根据用户本地日期生成 |
 | duration | Integer | 是 | 1-1440（分钟） |
 | content | String | 否 | 最多200字符 |
+
+**打卡日期规则：**
+- `checkinDate` 由客户端提交，格式必须为 `yyyy-MM-dd`。
+- MVP 阶段默认**只允许提交当天打卡**，不支持补打历史日期。
+- 后端校验：`checkinDate` 必须等于服务端当天日期（容忍时区差异±1天），非法日期返回 400。
+- 后端校验：日期格式合法性（如不允许 2026-02-30 等非法日期）。
+
+**幂等规则：**
+- 同一 userId + planId + checkinDate 只能有一条记录（数据库唯一索引 `uk_user_plan_date` 保证）。
+- 首次提交：INSERT 新记录。
+- 重复提交：UPDATE 已有记录的 duration 和 content 字段。
+- 通过响应中 `isNew` 字段告知客户端本次是新增还是更新。
 
 **成功响应（首次打卡）：**
 ```json
@@ -337,22 +476,17 @@
 **错误场景：**
 | code | message |
 |------|---------|
-| 400 | 参数校验失败 |
+| 400 | 参数校验失败 / checkinDate 格式非法 / 不允许补打历史日期 |
 | 404 | 计划不存在 |
 | 403 | 该计划不属于当前用户 |
 
-**幂等说明：**
-- 同一 userId + planId + checkinDate 只有一条记录。
-- 首次提交 INSERT，再次提交 UPDATE（duration, content）。
-- 通过 `isNew` 字段告知客户端是新建还是更新。
-
-**风险说明：** 唯一索引保证幂等。重复提交会覆盖已有的 duration 和 content。
+**风险说明：** 唯一索引保证幂等。重复提交会覆盖已有的 duration 和 content，不可恢复。
 
 ---
 
 ### 4.2 查看今日打卡状态
 
-**GET** `/api/v1/checkins/today`
+**GET** `/api/checkins/today`
 
 **鉴权：** 需要
 
@@ -391,7 +525,7 @@
 
 ### 4.3 查看月度打卡记录
 
-**GET** `/api/v1/checkins/monthly`
+**GET** `/api/checkins/monthly`
 
 **鉴权：** 需要
 
@@ -428,7 +562,7 @@
 
 ### 4.4 查看个人统计
 
-**GET** `/api/v1/checkins/stats`
+**GET** `/api/checkins/stats`
 
 **鉴权：** 需要
 
@@ -461,7 +595,7 @@
 
 ### 5.1 创建学习小组
 
-**POST** `/api/v1/groups`
+**POST** `/api/groups`
 
 **鉴权：** 需要
 
@@ -505,7 +639,7 @@
 
 ### 5.2 通过邀请码加入小组
 
-**POST** `/api/v1/groups/join`
+**POST** `/api/groups/join`
 
 **鉴权：** 需要
 
@@ -546,7 +680,7 @@
 
 ### 5.3 查看我的小组列表
 
-**GET** `/api/v1/groups`
+**GET** `/api/groups`
 
 **鉴权：** 需要
 
@@ -577,9 +711,11 @@
 
 ### 5.4 查看小组详情
 
-**GET** `/api/v1/groups/{groupId}`
+**GET** `/api/groups/{groupId}`
 
 **鉴权：** 需要（必须是小组成员）
+
+**权限校验：** 后端从 JWT 获取 userId，查询 study_group_member 校验当前用户是否为该小组成员，非成员返回 403。
 
 **成功响应：**
 ```json
@@ -615,9 +751,11 @@
 
 ### 5.5 查看小组今日打卡情况
 
-**GET** `/api/v1/groups/{groupId}/checkins/today`
+**GET** `/api/groups/{groupId}/checkins/today`
 
 **鉴权：** 需要（必须是小组成员）
+
+**权限校验：** 后端校验当前用户（JWT → userId）是否为该小组成员，非成员返回 403。
 
 **查询参数：**
 | 参数 | 类型 | 必填 | 说明 |
@@ -661,13 +799,11 @@
 | 403 | 非小组成员，无权查看 |
 | 404 | 小组不存在 |
 
-**权限说明：** 后端校验当前用户是否为该小组成员（查询 study_group_member），非成员返回 403。
-
 ---
 
 ### 5.6 退出小组
 
-**POST** `/api/v1/groups/{groupId}/quit`
+**POST** `/api/groups/{groupId}/quit`
 
 **鉴权：** 需要（必须是小组成员且非组长）
 
@@ -692,9 +828,11 @@
 
 ### 5.7 解散小组
 
-**POST** `/api/v1/groups/{groupId}/dismiss`
+**POST** `/api/groups/{groupId}/dismiss`
 
 **鉴权：** 需要（必须是组长）
+
+**权限校验：** 后端从 JWT 获取 userId，校验该用户是否为小组 owner_id，非组长返回 403。
 
 **成功响应：**
 ```json
@@ -719,7 +857,7 @@
 
 ### 6.1 获取提醒设置
 
-**GET** `/api/v1/reminder`
+**GET** `/api/reminder`
 
 **鉴权：** 需要
 
@@ -736,13 +874,13 @@
 }
 ```
 
-**说明：** 若用户无提醒设置记录，返回默认值。
+**说明：** 若用户无提醒设置记录，返回默认值 `{ "remindTime": "20:00", "enabled": true, "repeatType": 0 }`。
 
 ---
 
 ### 6.2 保存提醒设置
 
-**PUT** `/api/v1/reminder`
+**PUT** `/api/reminder`
 
 **鉴权：** 需要
 
@@ -782,35 +920,56 @@
 
 | 序号 | 方法 | 路径 | 说明 | 鉴权 |
 |------|------|------|------|------|
-| 1 | POST | /api/v1/auth/register | 注册 | 否 |
-| 2 | POST | /api/v1/auth/login | 登录 | 否 |
-| 3 | GET | /api/v1/auth/me | 当前用户信息 | 是 |
-| 4 | POST | /api/v1/plans | 创建学习计划 | 是 |
-| 5 | GET | /api/v1/plans | 我的计划列表 | 是 |
-| 6 | GET | /api/v1/plans/{planId} | 计划详情 | 是 |
-| 7 | POST | /api/v1/checkins | 提交打卡 | 是 |
-| 8 | GET | /api/v1/checkins/today | 今日打卡状态 | 是 |
-| 9 | GET | /api/v1/checkins/monthly | 月度打卡记录 | 是 |
-| 10 | GET | /api/v1/checkins/stats | 个人统计 | 是 |
-| 11 | POST | /api/v1/groups | 创建小组 | 是 |
-| 12 | POST | /api/v1/groups/join | 加入小组 | 是 |
-| 13 | GET | /api/v1/groups | 我的小组列表 | 是 |
-| 14 | GET | /api/v1/groups/{groupId} | 小组详情 | 是 |
-| 15 | GET | /api/v1/groups/{groupId}/checkins/today | 小组今日打卡 | 是 |
-| 16 | POST | /api/v1/groups/{groupId}/quit | 退出小组 | 是 |
-| 17 | POST | /api/v1/groups/{groupId}/dismiss | 解散小组 | 是 |
-| 18 | GET | /api/v1/reminder | 获取提醒设置 | 是 |
-| 19 | PUT | /api/v1/reminder | 保存提醒设置 | 是 |
+| 1 | POST | /api/auth/register | 注册 | 否 |
+| 2 | POST | /api/auth/login | 登录 | 否 |
+| 3 | GET | /api/auth/me | 当前用户信息 | 是 |
+| 4 | POST | /api/study-plans | 创建学习计划 | 是 |
+| 5 | PUT | /api/study-plans/{planId} | 修改学习计划 | 是 |
+| 6 | GET | /api/study-plans | 我的计划列表 | 是 |
+| 7 | GET | /api/study-plans/{planId} | 计划详情 | 是 |
+| 8 | GET | /api/study-plans/current | 当前默认计划 | 是 |
+| 9 | POST | /api/checkins | 提交打卡（幂等） | 是 |
+| 10 | GET | /api/checkins/today | 今日打卡状态 | 是 |
+| 11 | GET | /api/checkins/monthly | 月度打卡记录 | 是 |
+| 12 | GET | /api/checkins/stats | 个人统计 | 是 |
+| 13 | POST | /api/groups | 创建小组 | 是 |
+| 14 | POST | /api/groups/join | 加入小组 | 是 |
+| 15 | GET | /api/groups | 我的小组列表 | 是 |
+| 16 | GET | /api/groups/{groupId} | 小组详情 | 是 |
+| 17 | GET | /api/groups/{groupId}/checkins/today | 小组今日打卡 | 是 |
+| 18 | POST | /api/groups/{groupId}/quit | 退出小组 | 是 |
+| 19 | POST | /api/groups/{groupId}/dismiss | 解散小组 | 是 |
+| 20 | GET | /api/reminder | 获取提醒设置 | 是 |
+| 21 | PUT | /api/reminder | 保存提醒设置 | 是 |
 
 ---
 
 ## 8. 安全与权限要求
 
-1. **身份认证**：除注册和登录外，所有接口需携带有效 JWT Token。
-2. **身份来源**：userId 从 Token 解析，后端不接受前端传入 userId。
-3. **数据隔离**：用户只能操作自己的计划和打卡记录。
-4. **小组权限**：查看小组数据接口需校验当前用户是否为小组成员。
-5. **组长权限**：解散小组仅组长可操作。
-6. **退出限制**：组长不可退出，需先解散。
-7. **参数校验**：所有接口使用 jakarta.validation 进行入参校验。
-8. **统一异常**：全局异常处理器捕获异常并返回统一 Result 格式。
+### 8.1 userId 来源规则（核心安全约束）
+
+| 规则 | 说明 |
+|------|------|
+| 唯一来源 | userId 必须且只能从 `Authorization: ****** 的 JWT 中解析 |
+| 禁止传入 | 请求体、query string、path variable 中不允许包含 userId 作为可信身份参数 |
+| 后端校验 | 后端在所有需鉴权接口中通过 SecurityContext 或自定义注解获取当前 userId |
+| 越权防护 | 操作任何资源前，后端必须校验该资源归属当前 userId |
+
+### 8.2 权限校验清单
+
+| 接口 | 校验内容 |
+|------|----------|
+| PUT /api/study-plans/{planId} | planId 归属当前用户 |
+| GET /api/study-plans/{planId} | planId 归属当前用户 |
+| POST /api/checkins | planId 归属当前用户 |
+| GET /api/groups/{groupId} | 当前用户是小组成员 |
+| GET /api/groups/{groupId}/checkins/today | 当前用户是小组成员 |
+| POST /api/groups/{groupId}/quit | 当前用户是小组成员且非组长 |
+| POST /api/groups/{groupId}/dismiss | 当前用户是组长 |
+
+### 8.3 其他安全要求
+
+1. **参数校验**：所有接口使用 `jakarta.validation` 进行入参校验。
+2. **统一异常**：全局异常处理器捕获异常并返回统一 Result 格式。
+3. **密码安全**：密码使用 BCrypt 加密存储，接口不返回密码字段。
+4. **Token 安全**：JWT 签名密钥不可硬编码在源码中，使用配置文件或环境变量管理。
