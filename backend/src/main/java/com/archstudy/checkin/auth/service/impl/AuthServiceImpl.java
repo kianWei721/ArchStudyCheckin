@@ -31,18 +31,26 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
         }
 
+        // Check if email already exists
+        LambdaQueryWrapper<AppUser> emailQuery = new LambdaQueryWrapper<>();
+        emailQuery.eq(AppUser::getEmail, request.getEmail());
+        if (appUserMapper.selectCount(emailQuery) > 0) {
+            throw new BusinessException(ErrorCode.CONFLICT, "邮箱已被注册");
+        }
+
         // Create user
         AppUser user = new AppUser();
         user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setNickname(request.getNickname() != null ? request.getNickname() : request.getUsername());
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
+        user.setDeleted(0);
         appUserMapper.insert(user);
 
         // Generate token
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
-        return new LoginResponse(token, user.getId(), user.getUsername(), user.getNickname());
+        return new LoginResponse(token, user.getId(), user.getUsername());
     }
 
     @Override
@@ -58,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Generate token
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
-        return new LoginResponse(token, user.getId(), user.getUsername(), user.getNickname());
+        return new LoginResponse(token, user.getId(), user.getUsername());
     }
 
     @Override
@@ -67,6 +75,6 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
         }
-        return new CurrentUserResponse(user.getId(), user.getUsername(), user.getNickname());
+        return new CurrentUserResponse(user.getId(), user.getUsername(), user.getEmail());
     }
 }
